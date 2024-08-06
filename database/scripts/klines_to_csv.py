@@ -3,78 +3,109 @@ import os
 
 import pandas as pd
 
+from sqlalchemy.orm import Session
+
 from ..Base import connection
 from ..models.token import Symbol, Kline
 
 
-symbol = sys.argv[1]
-
-db = connection()
-
-symbol = db.query(Symbol).filter(Symbol.symbol == symbol).one_or_none()
-if not symbol:
-    print("Symbol not found. Please be shure you are using 'python3 -m database.scripts.klines_to_csv \"BTCUSDT\"'.")
-    exit()    
-
-klines = db.query(Kline).filter(Kline.id_symbol == symbol.id).all()
-print(f"{symbol.symbol}`s data is loaded.")
-
-# Creating and cleaning df
-df = pd.DataFrame([kline.__dict__ for kline in klines])
-
-df.drop("_sa_instance_state", axis=1, inplace=True)
-db.close()
-
-df.drop("id", axis=1, inplace=True)
-df.drop("id_symbol", axis=1, inplace=True)
-df.drop("time_create", axis=1, inplace=True)
-df.drop("time_update", axis=1, inplace=True)
-df.drop("time_close", axis=1, inplace=True)
-
-df.rename(columns={"open": "Open"}, inplace=True)
-df.rename(columns={"high": "High"}, inplace=True)
-df.rename(columns={"low": "Low"}, inplace=True)
-df.rename(columns={"close": "Close"}, inplace=True)
-df.rename(columns={"volume": "Volume"}, inplace=True)
+def fetch_symbol(db: Session, symbol_name: str) -> Symbol:
+    """Fetch symbol record from the database."""
+    return db.query(Symbol).filter(Symbol.symbol == symbol_name).one_or_none()
 
 
-df.time_open = pd.to_datetime(df.time_open)
-df.set_index("time_open", inplace=True)
+def fetch_klines(db: Session, symbol_id: int) -> list:
+    """Fetch klines associated with the given symbol ID."""
+    return db.query(Kline).filter(Kline.id_symbol == symbol_id).all()
 
-print("Dataframe is created.")
 
-# Cleaning data in df
+def process_klines(klines: list) -> pd.DataFrame:
+    """Convert klines to DataFrame and process it."""
+    df = pd.DataFrame([kline.__dict__ for kline in klines])
+    df.drop(columns=["_sa_instance_state"], inplace=True)
+    
+    # Drop unnecessary columns
+    df.drop(columns=["id", "id_symbol", "time_create", "time_update", "time_close"], inplace=True)
+    
+    # Rename columns
+    df.rename(columns={"open": "Open", "high": "High", "low": "Low", "close": "Close", "volume": "Volume"}, inplace=True)
+    
+    # Convert time_open to datetime and set it as index
+    df['time_open'] = pd.to_datetime(df['time_open'])
+    df.set_index('time_open', inplace=True)
+    
+    return df
 
-print("Data Checks:")
-# duplicates
-print("1. Track duplicates ...")
-duplicates = len(df) - len(df.drop_duplicates())
-df.drop_duplicates(inplace=True)
-index_duplicates = sum(df.index.duplicated())
-df = df.groupby(df.index).mean()
-print(f"Duplicated rows: {duplicates}({round(duplicates / len(df) * 100, 2)}%) are dropped.",
-      f"\nDuplicated indexes: {index_duplicates}({round(100 * index_duplicates / len(df), 2)}%) are averaged.")
 
-# is data complete
-print("2. Is data complete ...")
-all_timestamps = pd.date_range(start=df.index.min(), end=df.index.max(), freq="min")
-if len(all_timestamps) != len(df):
-    missing_timestamps = len(all_timestamps.difference(df.index))
-    df = df.resample('min').asfreq().ffill()
-    print(f"There are {missing_timestamps}({round(100 * missing_timestamps / len(df), 2)}%) missing candles. Filled using 'forward fill' method.")
-else:
-    print("Data is complete.")
+def clean_data(df: pd.DataFrame) -> pd.DataFrame:
+    """Clean and check the DataFrame."""
+    # Remove duplicates
+    duplicates = len(df) - len(df.drop_duplicates())
+    df.drop_duplicates(inplace=True)
+    index_duplicates = sum(df.index.duplicated())
+    df = df.groupby(df.index).mean()
+    
+    # Print data checks
+    print("Data checks:")
+    print(f"1. Duplicated rows: {duplicates} ({round(duplicates / len(df) * 100, 2)}%) are dropped.")
+    print(f"2. Duplicated indexes: {index_duplicates} ({round(100 * index_duplicates / len(df), 2)}%) are averaged.")
+    print(f"3. Data's duration is {(df.index[-1] - df.index[0]).total_seconds() / (365 * 24 * 3600)} years.")
+    
+    # Check completeness
+    all_timestamps = pd.date_range(start=df.index.min(), end=df.index.max(), freq="min")
+    if len(all_timestamps) != len(df):
+        missing_timestamps = len(all_timestamps.difference(df.index))
+        df = df.resample('min').asfreq().ffill()
+        print(f"4. There are {missing_timestamps} ({round(100 * missing_timestamps / len(df), 2)}%) missing candles. Filled using 'forward fill' method.")
+    else:
+        print("Data is complete.")
+    
+    return df
 
-# how is data long
-duration = df.index[-1] - df.index[0]
-print(f"3. Data`s duration is {duration.total_seconds() / (365 * 24 * 3600)} years.")
 
-print(df.info())
-print(df.describe())
+def save_to_csv(df: pd.DataFrame, symbol_name: str) -> None:
+    """Save the DataFrame to a CSV file."""
+    dirname = "csv_data"
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+    filename = os.path.join(dirname, f"{symbol_name}.csv")
+    df.to_csv(filename)
+    print(f"Data saved to {filename}")
 
-# Writing in file
-dirname = "csv_data"
-if not os.path.exists(dirname):
-    os.mkdir(dirname)
-filename = os.path.join(dirname, f"{symbol.symbol}.csv")
-df.to_csv(filename)
+
+def main(symbol_name: str) -> None:
+    """Main function to process symbol data."""
+    try:
+        db = connection()
+        symbol = fetch_symbol(db, symbol_name)
+        
+        if not symbol:
+            print(f"Symbol '{symbol_name}' not found. Please use a valid symbol.")
+            return
+        
+        klines = fetch_klines(db, symbol.id)
+        print(f"Data for symbol '{symbol.symbol}' is loaded.")
+        
+        df = process_klines(klines)
+        print("Dataframe is created.")
+        
+        df = clean_data(df)
+        
+        print(df.info())
+        print(df.describe())
+        
+        save_to_csv(df, symbol.symbol)
+    
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    
+    finally:
+        db.close()
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python script.py <symbol>")
+        sys.exit(1)
+    
+    main(sys.argv[1])
+    
