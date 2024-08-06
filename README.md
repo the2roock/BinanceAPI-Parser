@@ -60,6 +60,52 @@ For more details use https://developers.binance.com/docs/binance-spot-api-docs/r
   
 ## Usage
 ### Requirements
+First of all need to install requirements such as tools for database management, binance SDK, python asyncio and pandas libraries.
+```bash
+pip install -r requirements.txt
+```
+
 ### Connect to Database
+The **alembic** and **SQLAlchemy** is used to simplify work with database.
+1. Create database:
+```bash
+mysql
+```
+```sql
+CREATE DATABASE binance_parsing;
+```
+2. Nedd to change directory for next steps:
+```bash
+cd database
+```
+3. Create default database migrations package:
+```bash
+alembic init migrations
+```
+4. Configure *alembic.ini* and *migrations/env.py* files. In this step user should set `sqlalchemy_url` in alembic.ini. All nesessary imports in *migrations/env.py* has already done but its be able to change still.
+5. Upgrade database:
+```bash
+alembic revision --autogenerate -m 'init migration'
+alembic upgrade head
+```
+
 ### Parse Tickers
+The *parser/tokens.py* is used for parsing all new tokens.
+```bash
+python -m parser.tokens
+```
+
 ### Parse Candlesticks
+The *parser/historical/klines.py* is used for collecting historical price data. Previously should choose tickers to parse making them `status = 2` in database.
+```bash
+python3 -m parser.history.klines
+```
+
+### Create Ticker`s Klines CSV
+The *database/scripts/klines_to_csv.py* is developed for downloading ticker`s data from **kline** table.
+```bash
+python3 -m database.scripts.klines_to_csv 'BTCUSDT'
+```
+
+### Nessesary
+All python scripts are designed to be used from root *BinanceAPI-Parser* directory.
