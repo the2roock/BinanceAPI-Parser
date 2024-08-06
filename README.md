@@ -23,5 +23,5 @@ Next endpoints are used in the project:
 For more details use https://developers.binance.com/docs/binance-spot-api-docs/rest-api#general-endpoints and https://developers.binance.com/docs/binance-spot-api-docs/rest-api#market-data-endpoints
 
 ## Data Description
-
+![Database Structure Diagram](https://github.com/the2roock/BinanceAPI-Parser/blob/main/db-diagram.png)
 ## Usage Examples
