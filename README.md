@@ -4,6 +4,10 @@ The project on crypto tokens` price parsing from binance-api
 ## Goal
 The project focuses on parsing crypto tokens` market data be able to use by trading systems.
 
+## Result
+Result of BTCUSDT ticker`s historical data parsing.
+![BTCUSDT historical data plot](https://github.com/the2roock/BinanceAPI-Parser/blob/main/parser/historical/BTCUSDT_last_180_candles.png)
+
 ## Skills Required
 - Async Programming
 - Python
