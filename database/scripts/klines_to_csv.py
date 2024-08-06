@@ -18,7 +18,7 @@ def fetch_symbol(db: Session, symbol_name: str) -> Symbol:
         symbol_name (str): Target symbol.
 
     Returns:
-        Symbol: SQLAlchemy Symbol object or None if not found.
+        Symbol: ORM Symbol object or None if not found.
     """
     return db.query(Symbol).filter(Symbol.symbol == symbol_name).one_or_none()
 
@@ -31,7 +31,7 @@ def fetch_klines(db: Session, symbol_id: int) -> List[Kline]:
         symbol_id (int): Target symbol`s ID.
 
     Returns:
-        List[Kline]: List of SQLAlchemy Kline objects.
+        List[Kline]: List of ORM Kline objects.
     """
     return db.query(Kline).filter(Kline.id_symbol == symbol_id).all()
 
