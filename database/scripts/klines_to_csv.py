@@ -1,5 +1,6 @@
 import sys
 import os
+from typing import List
 
 import pandas as pd
 
@@ -10,17 +11,40 @@ from ..models.token import Symbol, Kline
 
 
 def fetch_symbol(db: Session, symbol_name: str) -> Symbol:
-    """Fetch symbol record from the database."""
+    """Fetch symbol record from the database.
+
+    Args:
+        db (Session): Database session.
+        symbol_name (str): Target symbol.
+
+    Returns:
+        Symbol: SQLAlchemy Symbol object or None if not found.
+    """
     return db.query(Symbol).filter(Symbol.symbol == symbol_name).one_or_none()
 
 
-def fetch_klines(db: Session, symbol_id: int) -> list:
-    """Fetch klines associated with the given symbol ID."""
+def fetch_klines(db: Session, symbol_id: int) -> List[Kline]:
+    """Fetch klines associated with the given symbol ID.
+
+    Args:
+        db (Session): Database session.
+        symbol_id (int): Target symbol`s ID.
+
+    Returns:
+        List[Kline]: List of SQLAlchemy Kline objects.
+    """
     return db.query(Kline).filter(Kline.id_symbol == symbol_id).all()
 
 
-def process_klines(klines: list) -> pd.DataFrame:
-    """Convert klines to DataFrame and process it."""
+def process_klines(klines: List) -> pd.DataFrame:
+    """Convert klines to DataFrame and process it.
+
+    Args:
+        klines (List): Raw kline data.
+
+    Returns:
+        pd.DataFrame: Processed kline DataFrame.
+    """
     df = pd.DataFrame([kline.__dict__ for kline in klines])
     df.drop(columns=["_sa_instance_state"], inplace=True)
     
@@ -38,7 +62,14 @@ def process_klines(klines: list) -> pd.DataFrame:
 
 
 def clean_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Clean and check the DataFrame."""
+    """Clean and check the DataFrame.
+
+    Args:
+        df (pd.DataFrame): Kline DataFrame object.
+
+    Returns:
+        pd.DataFrame: Cleaned kline DataFrame.
+    """
     # Remove duplicates
     duplicates = len(df) - len(df.drop_duplicates())
     df.drop_duplicates(inplace=True)
@@ -64,7 +95,12 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def save_to_csv(df: pd.DataFrame, symbol_name: str) -> None:
-    """Save the DataFrame to a CSV file."""
+    """Save the DataFrame to a CSV file.
+
+    Args:
+        df (pd.DataFrame): Kline DataFrame object.
+        symbol_name (str): Symbol name.
+    """
     dirname = "csv_data"
     if not os.path.exists(dirname):
         os.makedirs(dirname)
@@ -74,7 +110,11 @@ def save_to_csv(df: pd.DataFrame, symbol_name: str) -> None:
 
 
 def main(symbol_name: str) -> None:
-    """Main function to process symbol data."""
+    """Main function to process symbol data.
+
+    Args:
+        symbol_name (str): Target symbol name.
+    """
     try:
         db = connection()
         symbol = fetch_symbol(db, symbol_name)
@@ -101,6 +141,8 @@ def main(symbol_name: str) -> None:
     
     finally:
         db.close()
+
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
