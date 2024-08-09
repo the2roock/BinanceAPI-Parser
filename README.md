@@ -15,6 +15,7 @@ The project successfully parses historical data for BTCUSDT, as illustrated in t
 - MySQL
 - SQLAlchemy
 - Pandas
+- ETL Process Developing
 
 ## Understanding Binance API
 Binance uses the OAuth 2.0 protocol to access the API, so personal API key and secret are required. For detailed information, refer to the https://developers.binance.com/docs/.
